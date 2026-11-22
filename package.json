@@ -12,12 +12,13 @@
   "type": "commonjs",
   "dependencies": {
     "dotenv": "^18.0.10",
+    "jiti": "^2.7.0",
     "pg": "^8.23.1"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "bin": {
-    "my-migrator":"./bin/cli.js"
+    "my-migrator": "./bin/cli.js"
   }
 }
