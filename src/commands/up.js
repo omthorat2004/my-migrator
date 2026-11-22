@@ -34,10 +34,14 @@ async function up() {
         return;
     }
 
+    let appliedCount = 0;
+    let totalPending = 0;
+
     try {
         await ensureMigrationsTable(client);
         const applied = new Set(await getApplied(client));
         const pending = listMigrationFiles(migrationPath).filter((f) => !applied.has(f));
+        totalPending = pending.length;
 
         if (pending.length === 0) {
             console.log("No pending migrations");
@@ -54,9 +58,12 @@ async function up() {
                 await client.query("INSERT INTO migrations (name) VALUES ($1)", [file]);
             });
             console.log(`Applied: ${file}`);
+            appliedCount++;
         }
+        console.log(`${appliedCount} migration(s) applied`);
     } catch (err) {
         console.error(`Migration failed: ${err.message}`);
+        console.error(`${appliedCount} of ${totalPending} migration(s) applied`);
         process.exitCode = 1;
     } finally {
         await client.end();
