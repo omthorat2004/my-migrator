@@ -2,7 +2,12 @@ const path = require("node:path");
 
 const resolveMigrationDir = require("../resolveMigration");
 const { connect, ensureMigrationsTable, getApplied } = require("../db");
-const { getValidConfig, checkPathExist, runInTransaction } = require("../utils");
+const {
+    getValidConfig,
+    checkPathExist,
+    loadMigration,
+    runInTransaction,
+} = require("../utils");
 
 async function down(inputs) {
     const count = inputs[0] === undefined ? 1 : Number(inputs[0]);
@@ -51,7 +56,7 @@ async function down(inputs) {
             if (!checkPathExist(filePath)) {
                 throw new Error(`Migration file not found: ${file}`);
             }
-            const migration = require(filePath);
+            const migration = await loadMigration(filePath);
             if (typeof migration.down !== "function") {
                 throw new Error(`${file} does not export a down function`);
             }

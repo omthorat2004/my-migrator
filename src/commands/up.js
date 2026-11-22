@@ -2,7 +2,13 @@ const path = require("node:path");
 
 const resolveMigrationDir = require("../resolveMigration");
 const { connect, ensureMigrationsTable, getApplied } = require("../db");
-const { getValidConfig, checkPathExist, listMigrationFiles, runInTransaction } = require("../utils");
+const {
+    getValidConfig,
+    checkPathExist,
+    listMigrationFiles,
+    loadMigration,
+    runInTransaction,
+} = require("../utils");
 
 async function up() {
     const config = await getValidConfig();
@@ -39,7 +45,7 @@ async function up() {
         }
 
         for (const file of pending) {
-            const migration = require(path.join(migrationPath, file));
+            const migration = await loadMigration(path.join(migrationPath, file));
             if (typeof migration.up !== "function") {
                 throw new Error(`${file} does not export an up function`);
             }

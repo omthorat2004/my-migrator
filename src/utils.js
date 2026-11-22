@@ -1,5 +1,8 @@
 const fs = require("node:fs");
+const { createJiti } = require("jiti");
 const checkConfig = require("./load-config");
+
+const jiti = createJiti(__filename);
 
 const checkPathExist = (p) => fs.existsSync(p);
 
@@ -43,8 +46,13 @@ function listMigrationFiles(migrationPath) {
     if (!checkPathExist(migrationPath)) return [];
     return fs
         .readdirSync(migrationPath)
-        .filter((f) => /^\d+_.+\.js$/.test(f))
+        .filter((f) => /^\d+_.+\.(js|ts)$/.test(f))
         .sort();
+}
+
+async function loadMigration(filePath) {
+    const mod = await jiti.import(filePath);
+    return mod && typeof mod.up !== "function" && mod.default ? mod.default : mod;
 }
 
 async function runInTransaction(client, fn) {
@@ -64,5 +72,6 @@ module.exports = {
     makeTimestamp,
     getValidConfig,
     listMigrationFiles,
+    loadMigration,
     runInTransaction,
 };
