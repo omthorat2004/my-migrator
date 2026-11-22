@@ -56,9 +56,6 @@ async function create(inputs) {
     const flags = inputs.filter((i) => i.startsWith("--"));
     const name = inputs.find((i) => !i.startsWith("--"));
 
-    console.log(flags)
-    console.log(name)
-
     if (!name) {
         console.error("Usage: my-migrator create <migration_name>");
         process.exitCode = 1;
