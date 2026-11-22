@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const checkConfig = require("./load-config");
 
 const checkPathExist = (p) => fs.existsSync(p);
 
@@ -20,4 +21,48 @@ const makeTimestamp = (date = new Date()) => {
     );
 };
 
-module.exports = { checkPathExist, ensureDir, makeTimestamp };
+async function getValidConfig() {
+    const config = await checkConfig();
+
+    if (!config) {
+        console.error("Config file does not exist or does not export anything");
+        return null;
+    }
+    if (!config.path) {
+        console.error("path of migration folder is missing in config");
+        return null;
+    }
+    if (!config.databaseUrl) {
+        console.error("databaseUrl does not exist in configuration");
+        return null;
+    }
+    return config;
+}
+
+function listMigrationFiles(migrationPath) {
+    if (!checkPathExist(migrationPath)) return [];
+    return fs
+        .readdirSync(migrationPath)
+        .filter((f) => /^\d+_.+\.js$/.test(f))
+        .sort();
+}
+
+async function runInTransaction(client, fn) {
+    await client.query("BEGIN");
+    try {
+        await fn();
+        await client.query("COMMIT");
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    }
+}
+
+module.exports = {
+    checkPathExist,
+    ensureDir,
+    makeTimestamp,
+    getValidConfig,
+    listMigrationFiles,
+    runInTransaction,
+};
