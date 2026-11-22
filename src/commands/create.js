@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const resolveMigrationDir = require("../resolveMigration");
 const { ensureDir, makeTimestamp, getValidConfig } = require("../utils");
 
+
 const JS_TEMPLATE = `exports.up = async (client) => {
     // await client.query("...");
 };
@@ -13,7 +14,27 @@ exports.down = async (client) => {
 };
 `;
 
-const TS_TEMPLATE = `import type { Client } from "pg";
+const ESM_TEMPLATE = `export async function up(client) {
+    // await client.query("...");
+}
+
+export async function down(client) {
+    // await client.query("...");
+}
+`;
+
+function isEsmProject() {
+    try {
+        const pkg = JSON.parse(
+            fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")
+        );
+        return pkg.type === "module";
+    } catch {
+        return false;
+    }
+}
+
+const TS_TEMPLATE =`import type { Client } from "pg";
 
 export async function up(client: Client): Promise<void> {
     // await client.query("...");
@@ -34,6 +55,9 @@ function resolveLanguage(flags, config) {
 async function create(inputs) {
     const flags = inputs.filter((i) => i.startsWith("--"));
     const name = inputs.find((i) => !i.startsWith("--"));
+
+    console.log(flags)
+    console.log(name)
 
     if (!name) {
         console.error("Usage: my-migrator create <migration_name>");
@@ -73,7 +97,7 @@ async function create(inputs) {
     const filePath = path.join(migrationPath, fileName);
 
     try {
-        fs.writeFileSync(filePath, language === "ts" ? TS_TEMPLATE : JS_TEMPLATE, { flag: "wx" });
+        fs.writeFileSync(filePath, language === "ts" ? TS_TEMPLATE : isEsmProject() ? ESM_TEMPLATE : JS_TEMPLATE, { flag: "wx" });
     } catch (err) {
         if (err.code === "EACCES" || err.code === "EPERM") {
             console.error(`Permission denied: cannot write to ${migrationPath}`);

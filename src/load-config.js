@@ -25,7 +25,7 @@ async function checkConfig() {
     } else if (fs.existsSync(configPathTs)) {
         configPath = configPathTs;
     } else {
-        console.error("Config file doesn't exist");
+
         return null;
     }
 
