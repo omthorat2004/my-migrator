@@ -51,6 +51,9 @@ function listMigrationFiles(migrationPath) {
 }
 
 async function loadMigration(filePath) {
+    if (!checkPathExist(filePath)) {
+        throw new Error(`Migration file not found: ${filePath}`);
+    }
     const mod = await jiti.import(filePath);
     return mod && typeof mod.up !== "function" && mod.default ? mod.default : mod;
 }

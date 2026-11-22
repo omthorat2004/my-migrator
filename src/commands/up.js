@@ -1,7 +1,13 @@
 const path = require("node:path");
 
 const resolveMigrationDir = require("../resolveMigration");
-const { connect, ensureMigrationsTable, getApplied } = require("../db");
+const {
+    connect,
+    ensureMigrationsTable,
+    getApplied,
+    acquireLock,
+    releaseLock,
+} = require("../db");
 const {
     getValidConfig,
     checkPathExist,
@@ -36,8 +42,16 @@ async function up() {
 
     let appliedCount = 0;
     let totalPending = 0;
+    let lockAcquired = false;
 
     try {
+        if (!(await acquireLock(client))) {
+            console.error("Another migration is already running. Try again later.");
+            process.exitCode = 1;
+            return;
+        }
+        lockAcquired = true;
+
         await ensureMigrationsTable(client);
         const applied = new Set(await getApplied(client));
         const pending = listMigrationFiles(migrationPath).filter((f) => !applied.has(f));
@@ -66,6 +80,7 @@ async function up() {
         console.error(`${appliedCount} of ${totalPending} migration(s) applied`);
         process.exitCode = 1;
     } finally {
+        if (lockAcquired) await releaseLock(client).catch(() => {});
         await client.end();
     }
 }

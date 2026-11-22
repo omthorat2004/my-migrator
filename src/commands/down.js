@@ -1,7 +1,13 @@
 const path = require("node:path");
 
 const resolveMigrationDir = require("../resolveMigration");
-const { connect, ensureMigrationsTable, getApplied } = require("../db");
+const {
+    connect,
+    ensureMigrationsTable,
+    getApplied,
+    acquireLock,
+    releaseLock,
+} = require("../db");
 const {
     getValidConfig,
     checkPathExist,
@@ -40,7 +46,16 @@ async function down(inputs) {
         return;
     }
 
+    let lockAcquired = false;
+
     try {
+        if (!(await acquireLock(client))) {
+            console.error("Another migration is already running. Try again later.");
+            process.exitCode = 1;
+            return;
+        }
+        lockAcquired = true;
+
         await ensureMigrationsTable(client);
         const applied = await getApplied(client);
 
@@ -53,9 +68,6 @@ async function down(inputs) {
 
         for (const file of toRollBack) {
             const filePath = path.join(migrationPath, file);
-            if (!checkPathExist(filePath)) {
-                throw new Error(`Migration file not found: ${file}`);
-            }
             const migration = await loadMigration(filePath);
             if (typeof migration.down !== "function") {
                 throw new Error(`${file} does not export a down function`);
@@ -70,6 +82,7 @@ async function down(inputs) {
         console.error(`Rollback failed: ${err.message}`);
         process.exitCode = 1;
     } finally {
+        if (lockAcquired) await releaseLock(client).catch(() => {});
         await client.end();
     }
 }

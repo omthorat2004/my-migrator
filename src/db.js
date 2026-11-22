@@ -22,4 +22,15 @@ async function getApplied(client) {
     return rows.map((r) => r.name);
 }
 
-module.exports = { connect, ensureMigrationsTable, getApplied };
+const LOCK_KEY = 727274001; // fixed id for my-migrator
+
+async function acquireLock(client) {
+    const { rows } = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [LOCK_KEY]);
+    return rows[0].locked;
+}
+
+async function releaseLock(client) {
+    await client.query("SELECT pg_advisory_unlock($1)", [LOCK_KEY]);
+}
+
+module.exports = { connect, ensureMigrationsTable, getApplied, acquireLock, releaseLock };
