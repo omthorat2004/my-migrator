@@ -2,7 +2,7 @@ const path = require("node:path");
 
 const resolveMigrationDir = require("../resolveMigration");
 const { connect, ensureMigrationsTable, getApplied } = require("../db");
-const { getValidConfig, listMigrationFiles, runInTransaction } = require("../utils");
+const { getValidConfig, checkPathExist, listMigrationFiles, runInTransaction } = require("../utils");
 
 async function up() {
     const config = await getValidConfig();
@@ -12,7 +12,21 @@ async function up() {
     }
 
     const migrationPath = resolveMigrationDir(config.path);
-    const client = await connect(config.databaseUrl);
+
+    if (!checkPathExist(migrationPath)) {
+        console.error(`Migration folder not found: ${migrationPath}`);
+        process.exitCode = 1;
+        return;
+    }
+
+    let client;
+    try {
+        client = await connect(config.databaseUrl);
+    } catch (err) {
+        console.error(`Database connection failed: ${err.message}`);
+        process.exitCode = 1;
+        return;
+    }
 
     try {
         await ensureMigrationsTable(client);
